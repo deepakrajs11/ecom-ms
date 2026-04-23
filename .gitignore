@@ -1,0 +1,69 @@
+# ===============================
+# 🧱 Build folders
+# ===============================
+target/
+build/
+out/
+
+# ===============================
+# ☕ Java compiled files
+# ===============================
+*.class
+*.jar
+*.war
+*.ear
+
+# ===============================
+# 🧪 Logs
+# ===============================
+*.log
+logs/
+hs_err_pid*
+
+# ===============================
+# 🔐 Environment & secrets
+# ===============================
+.env
+.env.*
+
+# 👉 Better approach:
+# Keep a template instead
+!application-example.properties
+
+# ===============================
+# 🧠 IDE files
+# ===============================
+
+# IntelliJ
+.idea/
+*.iml
+
+# VS Code
+.vscode/
+
+# Eclipse
+.project
+.classpath
+.settings/
+
+# ===============================
+# 🖥️ OS files
+# ===============================
+.DS_Store
+Thumbs.db
+
+# ===============================
+# 🐳 Docker (if you add later)
+# ===============================
+docker-compose.override.yml
+
+# ===============================
+# 📦 Node (if frontend exists)
+# ===============================
+node_modules/
+
+# ===============================
+# 🧾 Temp files
+# ===============================
+*.tmp
+*.swp
