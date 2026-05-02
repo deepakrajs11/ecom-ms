@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: payment
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: payment-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+server:
+  port: ${SERVER_PORT:8084}
+
+jwt:
+  secret: ${JWT_SECRET}
+
+app:
+  kafka:
+    enabled: ${KAFKA_ENABLED:false}
+    order-created-topic: ${ORDER_CREATED_TOPIC:order.created}
+    refund-requested-topic: ${REFUND_REQUESTED_TOPIC:refund.requested}
+    payment-updated-topic: ${PAYMENT_UPDATED_TOPIC:payment.updated}
+  payment:
+    simulation-delay-ms: ${PAYMENT_SIMULATION_DELAY_MS:5000}
+    auto-pay-without-kafka: ${AUTO_PAY_WITHOUT_KAFKA:false}

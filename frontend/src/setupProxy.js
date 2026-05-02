@@ -24,4 +24,20 @@ module.exports = function setupProxy(app) {
       target: 'http://localhost:8082',
     })
   );
+
+  app.use(
+    '/api/orders',
+    createProxyMiddleware({
+      changeOrigin: true,
+      target: 'http://localhost:8083',
+    })
+  );
+
+  app.use(
+    '/api/payments',
+    createProxyMiddleware({
+      changeOrigin: true,
+      target: 'http://localhost:8084',
+    })
+  );
 };

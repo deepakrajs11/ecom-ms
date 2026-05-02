@@ -151,6 +151,43 @@ export async function clearCart() {
   return apiFetch('/cart', { method: 'DELETE' });
 }
 
+export async function createOrder(order) {
+  return normalizeOrder(await apiFetch('/orders', {
+    method: 'POST',
+    body: JSON.stringify(order),
+  }));
+}
+
+export async function getMyOrders() {
+  const response = await apiFetch('/orders');
+
+  return Array.isArray(response) ? response.map(normalizeOrder) : [];
+}
+
+export async function cancelOrder(orderId) {
+  return normalizeOrder(await apiFetch(`/orders/${orderId}/cancel`, { method: 'POST' }));
+}
+
+export async function getAdminOrders() {
+  const response = await apiFetch('/orders/admin');
+
+  return Array.isArray(response) ? response.map(normalizeOrder) : [];
+}
+
+export async function updateAdminOrderStatus(orderId, status) {
+  return normalizeOrder(await apiFetch(`/orders/admin/${orderId}/status`, {
+    method: 'PUT',
+    body: JSON.stringify({ status }),
+  }));
+}
+
+export async function updateAdminPaymentStatus({ orderNumber, paymentStatus, paymentReference }) {
+  return normalizeOrder(await apiFetch('/orders/admin/payment-status', {
+    method: 'PUT',
+    body: JSON.stringify({ orderNumber, paymentStatus, paymentReference }),
+  }));
+}
+
 async function apiFetch(path, options = {}) {
   if (typeof fetch !== 'function') {
     throw new Error('Fetch API is unavailable in this environment.');
@@ -304,6 +341,46 @@ function normalizeCartItem(item) {
     sku: item.sku || '',
     imageUrl: item.imageUrl || '',
     unitPrice: Number(item.unitPrice || item.price || 0),
+    quantity: Number(item.quantity || 0),
+    lineTotal: Number(item.lineTotal || 0),
+  };
+}
+
+function normalizeOrder(order) {
+  if (!order) {
+    return null;
+  }
+
+  const items = Array.isArray(order.items) ? order.items.map(normalizeOrderItem) : [];
+
+  return {
+    ...order,
+    id: order.id || order.orderId,
+    orderNumber: order.orderNumber || '',
+    userId: order.userId,
+    userEmail: order.userEmail || '',
+    status: order.status || '',
+    paymentStatus: order.paymentStatus || '',
+    totalQuantity: Number(order.totalQuantity || items.reduce((total, item) => total + item.quantity, 0)),
+    totalAmount: Number(order.totalAmount || items.reduce((total, item) => total + item.lineTotal, 0)),
+    shippingAddress: order.shippingAddress || '',
+    contactPhone: order.contactPhone || '',
+    paymentReference: order.paymentReference || '',
+    createdAt: order.createdAt || '',
+    updatedAt: order.updatedAt || '',
+    items,
+  };
+}
+
+function normalizeOrderItem(item) {
+  return {
+    ...item,
+    id: item.id || item.orderItemId,
+    productId: item.productId,
+    productName: item.productName || '',
+    sku: item.sku || '',
+    imageUrl: item.imageUrl || '',
+    unitPrice: Number(item.unitPrice || 0),
     quantity: Number(item.quantity || 0),
     lineTotal: Number(item.lineTotal || 0),
   };

@@ -726,6 +726,92 @@ input[readonly] {
   margin: 0;
 }
 
+.checkout-form {
+  border-top: 1px solid #edf0f4;
+  display: grid;
+  gap: 0.8rem;
+  padding-top: 1rem;
+}
+
+.checkout-form label {
+  margin-top: 0;
+}
+
+.checkout-form textarea {
+  min-height: 90px;
+}
+
+.order-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.order-panel {
+  background: #ffffff;
+  border: 1px solid #e1e6ec;
+  border-radius: 8px;
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.order-header,
+.order-footer,
+.order-item-row {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.order-header h2 {
+  font-size: 1.15rem;
+  margin: 0 0 0.25rem;
+}
+
+.order-header p,
+.order-footer p {
+  color: #657383;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.order-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.order-items {
+  border-bottom: 1px solid #edf0f4;
+  border-top: 1px solid #edf0f4;
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem 0;
+}
+
+.order-item-row {
+  color: #536170;
+}
+
+.order-item-row span:first-child {
+  color: #18202a;
+  font-weight: 800;
+}
+
+.admin-order-actions {
+  align-items: end;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  min-width: min(720px, 100%);
+}
+
+.admin-order-actions label {
+  margin-top: 0;
+}
+
 .table-wrap {
   background: #ffffff;
   border: 1px solid #e1e6ec;
@@ -830,6 +916,21 @@ td select {
 
   .cart-summary {
     position: static;
+  }
+
+  .order-header,
+  .order-footer,
+  .order-item-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .order-badges {
+    justify-content: flex-start;
+  }
+
+  .admin-order-actions {
+    grid-template-columns: 1fr;
   }
 
   .form-actions {

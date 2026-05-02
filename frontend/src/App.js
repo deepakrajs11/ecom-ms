@@ -3,11 +3,15 @@ import './App.css';
 import {
   addCartItem,
   clearCart,
+  cancelOrder,
+  createOrder,
   createProduct,
   deleteProductById,
   deleteUserById,
+  getAdminOrders,
   getCart,
   getCurrentUser,
+  getMyOrders,
   getProductById,
   getProducts,
   getUsers,
@@ -17,6 +21,8 @@ import {
   resetPassword,
   sendEmailOtp,
   removeCartItem,
+  updateAdminOrderStatus,
+  updateAdminPaymentStatus,
   updateProduct,
   updateCartItem,
   updateUser,
@@ -58,6 +64,11 @@ const emptyProductForm = {
   active: true,
 };
 
+const emptyCheckoutForm = {
+  shippingAddress: '',
+  contactPhone: '',
+};
+
 const pathToPage = {
   '/': 'home',
   '/login': 'login',
@@ -65,7 +76,9 @@ const pathToPage = {
   '/forgot-password': 'forgotPassword',
   '/products': 'products',
   '/cart': 'cart',
+  '/orders': 'orders',
   '/admin/products': 'adminProducts',
+  '/admin/orders': 'adminOrders',
   '/users': 'users',
   '/profile': 'profile',
 };
@@ -77,7 +90,9 @@ const pageToPath = {
   forgotPassword: '/forgot-password',
   products: '/products',
   cart: '/cart',
+  orders: '/orders',
   adminProducts: '/admin/products',
+  adminOrders: '/admin/orders',
   users: '/users',
   profile: '/profile',
 };
@@ -111,6 +126,11 @@ function App() {
   const [editingProductId, setEditingProductId] = useState(null);
   const [cart, setCart] = useState({ items: [], totalQuantity: 0, totalAmount: 0 });
   const [cartBusyProductId, setCartBusyProductId] = useState(null);
+  const [orders, setOrders] = useState([]);
+  const [adminOrders, setAdminOrders] = useState([]);
+  const [checkoutForm, setCheckoutForm] = useState(emptyCheckoutForm);
+  const [orderBusy, setOrderBusy] = useState(false);
+  const [paymentDrafts, setPaymentDrafts] = useState({});
   const [notice, setNotice] = useState('');
 
   const isAdmin = currentUser?.role === 'ADMIN';
@@ -255,6 +275,62 @@ function App() {
       ignore = true;
     };
   }, [currentUser, activePage]);
+
+  useEffect(() => {
+    if (!currentUser || activePage !== 'orders') {
+      return;
+    }
+
+    let ignore = false;
+
+    async function loadOrders() {
+      try {
+        const userOrders = await getMyOrders();
+
+        if (!ignore) {
+          setOrders(userOrders);
+        }
+      } catch (error) {
+        if (!ignore) {
+          setNotice(error.message || 'Order API request failed.');
+        }
+      }
+    }
+
+    loadOrders();
+
+    return () => {
+      ignore = true;
+    };
+  }, [currentUser, activePage]);
+
+  useEffect(() => {
+    if (!isAdmin || activePage !== 'adminOrders') {
+      return;
+    }
+
+    let ignore = false;
+
+    async function loadAdminOrders() {
+      try {
+        const nextOrders = await getAdminOrders();
+
+        if (!ignore) {
+          setAdminOrders(nextOrders);
+        }
+      } catch (error) {
+        if (!ignore) {
+          setNotice(error.message || 'Admin order API request failed.');
+        }
+      }
+    }
+
+    loadAdminOrders();
+
+    return () => {
+      ignore = true;
+    };
+  }, [isAdmin, activePage]);
 
   async function handleLogin(event) {
     event.preventDefault();
@@ -578,6 +654,73 @@ function App() {
     }
   }
 
+  async function submitOrder(event) {
+    event.preventDefault();
+
+    if (!checkoutForm.shippingAddress.trim()) {
+      setNotice('Shipping address is required.');
+      return;
+    }
+
+    setOrderBusy(true);
+
+    try {
+      const order = await createOrder({
+        shippingAddress: checkoutForm.shippingAddress,
+        contactPhone: checkoutForm.contactPhone,
+      });
+      setOrders((currentOrders) => [order, ...currentOrders]);
+      setCart({ items: [], totalQuantity: 0, totalAmount: 0 });
+      setCheckoutForm(emptyCheckoutForm);
+      setNotice('Order placed. Payment is pending.');
+      navigate('orders');
+    } catch (error) {
+      setNotice(error.message || 'Could not place order.');
+    } finally {
+      setOrderBusy(false);
+    }
+  }
+
+  async function cancelMyOrder(orderId) {
+    setOrderBusy(true);
+
+    try {
+      const order = await cancelOrder(orderId);
+      setOrders((currentOrders) => currentOrders.map((current) => current.id === order.id ? order : current));
+      setNotice('Order cancelled.');
+    } catch (error) {
+      setNotice(error.message || 'Could not cancel order.');
+    } finally {
+      setOrderBusy(false);
+    }
+  }
+
+  async function saveAdminOrderStatus(orderId, status) {
+    try {
+      const order = await updateAdminOrderStatus(orderId, status);
+      setAdminOrders((currentOrders) => currentOrders.map((current) => current.id === order.id ? order : current));
+      setNotice('Order status updated.');
+    } catch (error) {
+      setNotice(error.message || 'Could not update order status.');
+    }
+  }
+
+  async function saveAdminPaymentStatus(order) {
+    const draft = paymentDrafts[order.id] || {};
+
+    try {
+      const updatedOrder = await updateAdminPaymentStatus({
+        orderNumber: order.orderNumber,
+        paymentStatus: draft.paymentStatus || order.paymentStatus,
+        paymentReference: draft.paymentReference || order.paymentReference,
+      });
+      setAdminOrders((currentOrders) => currentOrders.map((current) => current.id === updatedOrder.id ? updatedOrder : current));
+      setNotice('Payment status updated.');
+    } catch (error) {
+      setNotice(error.message || 'Could not update payment status.');
+    }
+  }
+
   function navigate(page) {
     const path = pageToPath[page] || '/';
 
@@ -685,11 +828,24 @@ function App() {
           <CartPage
             busyProductId={cartBusyProductId}
             cart={cart}
+            checkoutForm={checkoutForm}
             currentUser={currentUser}
+            orderBusy={orderBusy}
             onClear={clearCurrentCart}
+            onCheckoutChange={setCheckoutForm}
             onNavigate={navigate}
             onRemove={removeProductFromCart}
+            onSubmitOrder={submitOrder}
             onUpdateQuantity={updateCartQuantity}
+          />
+        )}
+        {activePage === 'orders' && (
+          <OrdersPage
+            currentUser={currentUser}
+            onCancel={cancelMyOrder}
+            onNavigate={navigate}
+            orderBusy={orderBusy}
+            orders={orders}
           />
         )}
         {activePage === 'adminProducts' && (
@@ -708,6 +864,17 @@ function App() {
             onSave={saveProduct}
             onStartEdit={startProductEdit}
             products={products}
+          />
+        )}
+        {activePage === 'adminOrders' && (
+          <AdminOrdersPage
+            isAdmin={isAdmin}
+            onNavigate={navigate}
+            onPaymentDraftChange={(orderId, draft) => setPaymentDrafts((current) => ({ ...current, [orderId]: draft }))}
+            onSavePayment={saveAdminPaymentStatus}
+            onSaveStatus={saveAdminOrderStatus}
+            orders={adminOrders}
+            paymentDrafts={paymentDrafts}
           />
         )}
         {activePage === 'login' && (
@@ -778,12 +945,20 @@ function Navbar({ activePage, authChecked, cartCount, currentUser, isAdmin, onNa
           Products
         </button>
         {currentUser && (
-          <button className={activePage === 'cart' ? 'active' : ''} type="button" onClick={() => onNavigate('cart')}>
-            Cart {cartCount ? `(${cartCount})` : ''}
-          </button>
+          <>
+            <button className={activePage === 'cart' ? 'active' : ''} type="button" onClick={() => onNavigate('cart')}>
+              Cart {cartCount ? `(${cartCount})` : ''}
+            </button>
+            <button className={activePage === 'orders' ? 'active' : ''} type="button" onClick={() => onNavigate('orders')}>
+              Orders
+            </button>
+          </>
         )}
         {isAdmin && (
           <>
+            <button className={activePage === 'adminOrders' ? 'active' : ''} type="button" onClick={() => onNavigate('adminOrders')}>
+              Manage Orders
+            </button>
             <button className={activePage === 'adminProducts' ? 'active' : ''} type="button" onClick={() => onNavigate('adminProducts')}>
               Manage Products
             </button>
@@ -1322,10 +1497,14 @@ function ProductDetails({ busy, currentUser, onAddToCart, product, onClose }) {
 function CartPage({
   busyProductId,
   cart,
+  checkoutForm,
   currentUser,
+  orderBusy,
   onClear,
+  onCheckoutChange,
   onNavigate,
   onRemove,
+  onSubmitOrder,
   onUpdateQuantity,
 }) {
   if (!currentUser) {
@@ -1422,12 +1601,201 @@ function CartPage({
                 <dd>{formatCurrency(cart.totalAmount)}</dd>
               </div>
             </dl>
+            <form className="checkout-form" onSubmit={onSubmitOrder}>
+              <label>
+                Shipping address
+                <textarea
+                  required
+                  value={checkoutForm.shippingAddress}
+                  onChange={(event) => onCheckoutChange({ ...checkoutForm, shippingAddress: event.target.value })}
+                  placeholder="House, street, city, state, PIN"
+                />
+              </label>
+              <label>
+                Contact phone
+                <input
+                  value={checkoutForm.contactPhone}
+                  onChange={(event) => onCheckoutChange({ ...checkoutForm, contactPhone: event.target.value })}
+                  placeholder="Optional"
+                />
+              </label>
+              <button className="primary" disabled={orderBusy} type="submit">
+                {orderBusy ? 'Placing...' : 'Place order'}
+              </button>
+            </form>
             <button className="primary" type="button" onClick={() => onNavigate('products')}>Continue shopping</button>
             <button className="danger" type="button" onClick={onClear}>Clear cart</button>
           </aside>
         </div>
       )}
     </section>
+  );
+}
+
+function OrdersPage({ currentUser, onCancel, onNavigate, orderBusy, orders }) {
+  if (!currentUser) {
+    return (
+      <section className="locked-page">
+        <h1>Login required</h1>
+        <p>Sign in to view your orders.</p>
+        <button className="primary" type="button" onClick={() => onNavigate('login')}>Login</button>
+      </section>
+    );
+  }
+
+  return (
+    <section className="orders-page">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Account</p>
+          <h1>Orders</h1>
+        </div>
+        <span>{orders.length} orders</span>
+      </div>
+
+      {orders.length === 0 ? (
+        <div className="empty-state">
+          <h2>No orders yet</h2>
+          <p>Place an order from your cart and it will appear here.</p>
+          <button className="primary" type="button" onClick={() => onNavigate('products')}>Browse products</button>
+        </div>
+      ) : (
+        <div className="order-list">
+          {orders.map((order) => (
+            <OrderPanel
+              key={order.id}
+              order={order}
+              actions={(
+                <button
+                  className="danger"
+                  disabled={orderBusy || ['CANCELLED', 'SHIPPED', 'DELIVERED'].includes(order.status)}
+                  type="button"
+                  onClick={() => onCancel(order.id)}
+                >
+                  Cancel
+                </button>
+              )}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function AdminOrdersPage({
+  isAdmin,
+  onNavigate,
+  onPaymentDraftChange,
+  onSavePayment,
+  onSaveStatus,
+  orders,
+  paymentDrafts,
+}) {
+  if (!isAdmin) {
+    return (
+      <section className="locked-page">
+        <h1>Admin access required</h1>
+        <p>Order administration requires an ADMIN token.</p>
+        <button className="primary" type="button" onClick={() => onNavigate('login')}>Login as admin</button>
+      </section>
+    );
+  }
+
+  return (
+    <section className="orders-page">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Admin</p>
+          <h1>Order management</h1>
+        </div>
+        <span>{orders.length} orders</span>
+      </div>
+
+      <div className="order-list">
+        {orders.map((order) => {
+          const draft = paymentDrafts[order.id] || {};
+
+          return (
+            <OrderPanel
+              key={order.id}
+              order={order}
+              actions={(
+                <div className="admin-order-actions">
+                  <label>
+                    Order status
+                    <select value={order.status} onChange={(event) => onSaveStatus(order.id, event.target.value)}>
+                      <option value="PENDING_PAYMENT">PENDING_PAYMENT</option>
+                      <option value="CONFIRMED">CONFIRMED</option>
+                      <option value="CANCELLED">CANCELLED</option>
+                      <option value="PAYMENT_FAILED">PAYMENT_FAILED</option>
+                      <option value="SHIPPED">SHIPPED</option>
+                      <option value="DELIVERED">DELIVERED</option>
+                    </select>
+                  </label>
+                  <label>
+                    Payment
+                    <select
+                      value={draft.paymentStatus || order.paymentStatus}
+                      onChange={(event) => onPaymentDraftChange(order.id, { ...draft, paymentStatus: event.target.value })}
+                    >
+                      <option value="PENDING">PENDING</option>
+                      <option value="PAID">PAID</option>
+                      <option value="FAILED">FAILED</option>
+                      <option value="REFUNDED">REFUNDED</option>
+                    </select>
+                  </label>
+                  <label>
+                    Reference
+                    <input
+                      value={draft.paymentReference ?? order.paymentReference}
+                      onChange={(event) => onPaymentDraftChange(order.id, { ...draft, paymentReference: event.target.value })}
+                      placeholder="Payment reference"
+                    />
+                  </label>
+                  <button className="primary" type="button" onClick={() => onSavePayment(order)}>Save payment</button>
+                </div>
+              )}
+            />
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function OrderPanel({ actions, order }) {
+  return (
+    <article className="order-panel">
+      <div className="order-header">
+        <div>
+          <h2>{order.orderNumber}</h2>
+          <p>{formatDateTime(order.createdAt)} · {order.userEmail}</p>
+        </div>
+        <div className="order-badges">
+          <span className="role-pill">{order.status}</span>
+          <span className="role-pill">{order.paymentStatus}</span>
+        </div>
+      </div>
+
+      <div className="order-items">
+        {order.items.map((item) => (
+          <div className="order-item-row" key={item.id || item.productId}>
+            <span>{item.productName}</span>
+            <span>{item.quantity} x {formatCurrency(item.unitPrice)}</span>
+            <strong>{formatCurrency(item.lineTotal)}</strong>
+          </div>
+        ))}
+      </div>
+
+      <div className="order-footer">
+        <div>
+          <strong>{formatCurrency(order.totalAmount)}</strong>
+          <p>{order.totalQuantity} items · {order.shippingAddress}</p>
+        </div>
+        {actions}
+      </div>
+    </article>
   );
 }
 
@@ -1680,6 +2048,17 @@ function formatCurrency(value) {
     currency: 'INR',
     style: 'currency',
   }).format(Number(value || 0));
+}
+
+function formatDateTime(value) {
+  if (!value) {
+    return 'Pending';
+  }
+
+  return new Intl.DateTimeFormat('en-IN', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
 }
 
 function isValidEmail(email) {
