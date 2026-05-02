@@ -1,5 +1,6 @@
 package com.deepakrajs.user.service;
 
+import com.deepakrajs.user.dto.UpdateRequestDto;
 import com.deepakrajs.user.dto.UserRequestDto;
 import com.deepakrajs.user.dto.UserResponseDto;
 
@@ -13,7 +14,7 @@ public interface UserService {
 
     List<UserResponseDto> getAllUsers();
 
-    UserResponseDto updateUser(Long id, UserRequestDto request);
+    UserResponseDto updateUser(Long id, UpdateRequestDto request);
 
     void deleteUser(Long id);
 

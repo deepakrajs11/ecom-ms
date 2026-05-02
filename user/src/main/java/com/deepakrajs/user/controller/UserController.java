@@ -1,6 +1,7 @@
 package com.deepakrajs.user.controller;
 
 
+import com.deepakrajs.user.dto.UpdateRequestDto;
 import com.deepakrajs.user.dto.UserRequestDto;
 import com.deepakrajs.user.dto.UserResponseDto;
 import com.deepakrajs.user.service.UserService;
@@ -8,8 +9,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
 @RestController
@@ -46,9 +47,29 @@ public class UserController {
     @PutMapping("/{id}")
     public ResponseEntity<UserResponseDto> updateUser(
             @PathVariable Long id,
-            @Valid @RequestBody UserRequestDto request) {
+            @Valid @RequestBody UpdateRequestDto request) {
 
         return ResponseEntity.ok(userService.updateUser(id, request));
+    }
+
+    @PutMapping("/updateByEmail")
+    public ResponseEntity<?> updateUser(
+            Authentication authentication,
+            @Valid @RequestBody UpdateRequestDto request) {
+        try {
+            if (authentication == null) {
+                return ResponseEntity.status(401).body("Unauthorized");
+            }
+            if(!authentication.getName().equals(request.getEmail())){
+                return ResponseEntity.status(500).body("Illegal Operation Found");
+            }
+            Long id = userService.getUserByEmail(request.getEmail()).getId();
+            return ResponseEntity.ok(userService.updateUser(id, request));
+        }
+        catch (Exception e){
+            return ResponseEntity.status(400).body(e.getMessage());
+        }
+
     }
 
     // ✅ Delete User (204 NO CONTENT)
@@ -58,4 +79,5 @@ public class UserController {
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();
     }
-}
+
+   }

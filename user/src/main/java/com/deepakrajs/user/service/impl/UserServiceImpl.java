@@ -1,6 +1,7 @@
 package com.deepakrajs.user.service.impl;
 
 import com.deepakrajs.user.dto.Role;
+import com.deepakrajs.user.dto.UpdateRequestDto;
 import com.deepakrajs.user.dto.UserRequestDto;
 import com.deepakrajs.user.dto.UserResponseDto;
 import com.deepakrajs.user.model.User;
@@ -51,13 +52,13 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserResponseDto updateUser(Long id, UserRequestDto request) {
+    public UserResponseDto updateUser(Long id, UpdateRequestDto request) {
 
         User existingUser = getUserEntity(id);
 
-        existingUser.setName(request.getName());
-        existingUser.setEmail(request.getEmail());
-        existingUser.setRole(Role.valueOf(request.getRole()));
+        if(request.getName()!=null) existingUser.setName(request.getName());
+        if(request.getEmail()!=null) existingUser.setEmail(request.getEmail());
+        if(request.getRole()!=null) existingUser.setRole(Role.valueOf(request.getRole()));
 
         // Optional: update password only if provided
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
