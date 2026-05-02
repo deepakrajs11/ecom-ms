@@ -44,6 +44,8 @@ public class AuthController {
 
         return ResponseEntity.ok(Map.of(
                 "token", token,
+                "id", user.getId(),
+                "name", user.getName(),
                 "email", user.getEmail(),
                 "role", user.getRole()
         ));
@@ -69,9 +71,13 @@ public class AuthController {
         if (authentication == null) {
             return ResponseEntity.status(401).body("Unauthorized");
         }
+        User user = userRepository.findByEmail(authentication.getName()).get();
+
         return ResponseEntity.ok(Map.of(
-                "name", userRepository.findByEmail(authentication.getName()).get().getName(),
+                "id", user.getId(),
+                "name", user.getName(),
                 "email", authentication.getName(),
+                "role", user.getRole(),
                 "roles", authentication.getAuthorities()
         ));
     }

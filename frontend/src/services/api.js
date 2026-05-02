@@ -86,6 +86,71 @@ export async function deleteUserById(userId) {
   return apiFetch(`/users/${userId}`, { method: 'DELETE' });
 }
 
+export async function getProducts({ page = 0, size = 12, search = '', category = '' } = {}) {
+  const params = new URLSearchParams({ page, size });
+
+  if (search.trim()) {
+    params.set('name', search.trim());
+    return normalizeProductPage(await apiFetch(`/products/search?${params.toString()}`));
+  }
+
+  if (category.trim()) {
+    return normalizeProductPage(
+      await apiFetch(`/products/category/${encodeURIComponent(category.trim())}?${params.toString()}`)
+    );
+  }
+
+  return normalizeProductPage(await apiFetch(`/products?${params.toString()}`));
+}
+
+export async function getProductById(productId) {
+  return normalizeProduct(await apiFetch(`/products/${productId}`));
+}
+
+export async function createProduct(product) {
+  return normalizeProduct(await apiFetch('/products', {
+    method: 'POST',
+    body: JSON.stringify(normalizeProductPayload(product)),
+  }));
+}
+
+export async function updateProduct(productId, product) {
+  return normalizeProduct(await apiFetch(`/products/${productId}`, {
+    method: 'PUT',
+    body: JSON.stringify(normalizeProductPayload(product)),
+  }));
+}
+
+export async function deleteProductById(productId) {
+  return apiFetch(`/products/${productId}`, { method: 'DELETE' });
+}
+
+export async function getCart() {
+  return normalizeCart(await apiFetch('/cart'));
+}
+
+export async function addCartItem(productId, quantity = 1) {
+  return normalizeCart(await apiFetch('/cart/items', {
+    method: 'POST',
+    body: JSON.stringify({ productId, quantity }),
+  }));
+}
+
+export async function updateCartItem(productId, quantity) {
+  return normalizeCart(await apiFetch(`/cart/items/${productId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ quantity }),
+  }));
+}
+
+export async function removeCartItem(productId) {
+  return normalizeCart(await apiFetch(`/cart/items/${productId}`, { method: 'DELETE' }));
+}
+
+export async function clearCart() {
+  return apiFetch('/cart', { method: 'DELETE' });
+}
+
 async function apiFetch(path, options = {}) {
   if (typeof fetch !== 'function') {
     throw new Error('Fetch API is unavailable in this environment.');
@@ -107,7 +172,7 @@ async function apiFetch(path, options = {}) {
   const data = await parseResponse(response);
 
   if (!response.ok) {
-    throw new Error(data?.message || 'Request failed.');
+    throw new Error(data?.message || data?.detail || data?.error || data || 'Request failed.');
   }
 
   return data;
@@ -155,6 +220,92 @@ function normalizeUser(user) {
     id: user.id || user.userId || user.userID || user._id || user.uuid,
     name: user.name || user.fullName || user.username || user.email,
     role: normalizeRole(user.role || user.roles?.[0] || user.authorities?.[0]),
+  };
+}
+
+function normalizeProductPage(response) {
+  if (Array.isArray(response)) {
+    return {
+      content: response.map(normalizeProduct),
+      number: 0,
+      totalPages: 1,
+      totalElements: response.length,
+    };
+  }
+
+  return {
+    ...response,
+    content: Array.isArray(response?.content) ? response.content.map(normalizeProduct) : [],
+    number: response?.number || 0,
+    totalPages: response?.totalPages || 1,
+    totalElements: response?.totalElements || response?.content?.length || 0,
+  };
+}
+
+function normalizeProduct(product) {
+  if (!product) {
+    return null;
+  }
+
+  return {
+    ...product,
+    id: product.id || product.productId || product._id,
+    name: product.name || '',
+    description: product.description || '',
+    sku: product.sku || '',
+    price: Number(product.price || 0),
+    quantity: Number(product.quantity || 0),
+    category: product.category || '',
+    imageUrl: product.imageUrl || '',
+    active: product.active !== false,
+  };
+}
+
+function normalizeProductPayload(product) {
+  return {
+    name: product.name.trim(),
+    description: product.description.trim(),
+    sku: product.sku.trim(),
+    price: Number(product.price),
+    quantity: Number(product.quantity),
+    category: product.category.trim(),
+    imageUrl: product.imageUrl.trim(),
+    active: product.active !== false,
+  };
+}
+
+function normalizeCart(cart) {
+  if (!cart) {
+    return {
+      userId: null,
+      userEmail: '',
+      items: [],
+      totalQuantity: 0,
+      totalAmount: 0,
+    };
+  }
+
+  const items = Array.isArray(cart.items) ? cart.items.map(normalizeCartItem) : [];
+
+  return {
+    ...cart,
+    items,
+    totalQuantity: Number(cart.totalQuantity || items.reduce((total, item) => total + item.quantity, 0)),
+    totalAmount: Number(cart.totalAmount || items.reduce((total, item) => total + item.lineTotal, 0)),
+  };
+}
+
+function normalizeCartItem(item) {
+  return {
+    ...item,
+    id: item.id || item.cartItemId,
+    productId: item.productId,
+    productName: item.productName || item.name || '',
+    sku: item.sku || '',
+    imageUrl: item.imageUrl || '',
+    unitPrice: Number(item.unitPrice || item.price || 0),
+    quantity: Number(item.quantity || 0),
+    lineTotal: Number(item.lineTotal || 0),
   };
 }
 

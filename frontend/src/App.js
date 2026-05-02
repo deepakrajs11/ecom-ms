@@ -1,14 +1,24 @@
 import { useEffect, useState } from 'react';
 import './App.css';
 import {
+  addCartItem,
+  clearCart,
+  createProduct,
+  deleteProductById,
   deleteUserById,
+  getCart,
   getCurrentUser,
+  getProductById,
+  getProducts,
   getUsers,
   loginUser,
   logoutUser,
   registerUser,
   resetPassword,
   sendEmailOtp,
+  removeCartItem,
+  updateProduct,
+  updateCartItem,
   updateUser,
   updateUserByEmail,
   verifyEmailOtp,
@@ -37,11 +47,25 @@ const emptyForgotPasswordForm = {
   confirmPassword: '',
 };
 
+const emptyProductForm = {
+  name: '',
+  description: '',
+  sku: '',
+  price: '',
+  quantity: '',
+  category: '',
+  imageUrl: '',
+  active: true,
+};
+
 const pathToPage = {
   '/': 'home',
   '/login': 'login',
   '/register': 'register',
   '/forgot-password': 'forgotPassword',
+  '/products': 'products',
+  '/cart': 'cart',
+  '/admin/products': 'adminProducts',
   '/users': 'users',
   '/profile': 'profile',
 };
@@ -51,6 +75,9 @@ const pageToPath = {
   login: '/login',
   register: '/register',
   forgotPassword: '/forgot-password',
+  products: '/products',
+  cart: '/cart',
+  adminProducts: '/admin/products',
   users: '/users',
   profile: '/profile',
 };
@@ -76,6 +103,14 @@ function App() {
   const [users, setUsers] = useState(initialUsers);
   const [editingUserId, setEditingUserId] = useState(null);
   const [draftUser, setDraftUser] = useState({ name: '', email: '' });
+  const [products, setProducts] = useState([]);
+  const [productPage, setProductPage] = useState({ number: 0, totalPages: 1, totalElements: 0 });
+  const [productFilters, setProductFilters] = useState({ search: '', category: '' });
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [productForm, setProductForm] = useState(emptyProductForm);
+  const [editingProductId, setEditingProductId] = useState(null);
+  const [cart, setCart] = useState({ items: [], totalQuantity: 0, totalAmount: 0 });
+  const [cartBusyProductId, setCartBusyProductId] = useState(null);
   const [notice, setNotice] = useState('');
 
   const isAdmin = currentUser?.role === 'ADMIN';
@@ -154,6 +189,72 @@ function App() {
       ignore = true;
     };
   }, [isAdmin]);
+
+  useEffect(() => {
+    if (!['home', 'products', 'adminProducts'].includes(activePage)) {
+      return;
+    }
+
+    let ignore = false;
+
+    async function loadProducts() {
+      try {
+        const page = await getProducts({
+          page: productPage.number,
+          search: productFilters.search,
+          category: productFilters.category,
+        });
+
+        if (!ignore) {
+          setProducts(page.content);
+          setProductPage({
+            number: page.number,
+            totalPages: page.totalPages,
+            totalElements: page.totalElements,
+          });
+        }
+      } catch {
+        if (!ignore) {
+          setNotice('Product API is not reachable yet.');
+        }
+      }
+    }
+
+    loadProducts();
+
+    return () => {
+      ignore = true;
+    };
+  }, [activePage, productFilters, productPage.number]);
+
+  useEffect(() => {
+    if (!currentUser) {
+      setCart({ items: [], totalQuantity: 0, totalAmount: 0 });
+      return;
+    }
+
+    let ignore = false;
+
+    async function loadCart() {
+      try {
+        const userCart = await getCart();
+
+        if (!ignore) {
+          setCart(userCart);
+        }
+      } catch (error) {
+        if (!ignore && activePage === 'cart') {
+          setNotice(error.message || 'Cart API request failed. Check cart service logs for the downstream error.');
+        }
+      }
+    }
+
+    loadCart();
+
+    return () => {
+      ignore = true;
+    };
+  }, [currentUser, activePage]);
 
   async function handleLogin(event) {
     event.preventDefault();
@@ -335,8 +436,146 @@ function App() {
   async function handleLogout() {
     await logoutUser().catch(() => null);
     setCurrentUser(null);
+    setCart({ items: [], totalQuantity: 0, totalAmount: 0 });
     setNotice('Signed out.');
     navigate('home');
+  }
+
+  function updateProductFilters(nextFilters) {
+    setProductFilters(nextFilters);
+    setProductPage((current) => ({ ...current, number: 0 }));
+  }
+
+  async function viewProduct(productId) {
+    try {
+      const product = await getProductById(productId);
+      setSelectedProduct(product);
+    } catch (error) {
+      setNotice(error.message || 'Could not load product details.');
+    }
+  }
+
+  function startProductCreate() {
+    setEditingProductId('new');
+    setProductForm(emptyProductForm);
+  }
+
+  function startProductEdit(product) {
+    setEditingProductId(product.id);
+    setProductForm({
+      name: product.name || '',
+      description: product.description || '',
+      sku: product.sku || '',
+      price: product.price ?? '',
+      quantity: product.quantity ?? '',
+      category: product.category || '',
+      imageUrl: product.imageUrl || '',
+      active: product.active !== false,
+    });
+  }
+
+  async function saveProduct(event) {
+    event.preventDefault();
+
+    if (!productForm.name.trim() || !productForm.sku.trim()) {
+      setNotice('Product name and SKU are required.');
+      return;
+    }
+
+    if (Number(productForm.price) < 0 || Number(productForm.quantity) < 0) {
+      setNotice('Price and quantity cannot be negative.');
+      return;
+    }
+
+    try {
+      const savedProduct = editingProductId === 'new'
+        ? await createProduct(productForm)
+        : await updateProduct(editingProductId, productForm);
+
+      setProducts((currentProducts) => {
+        if (editingProductId === 'new') {
+          return [savedProduct, ...currentProducts];
+        }
+
+        return currentProducts.map((product) => product.id === savedProduct.id ? savedProduct : product);
+      });
+      setEditingProductId(null);
+      setProductForm(emptyProductForm);
+      setNotice(editingProductId === 'new' ? 'Product created.' : 'Product updated.');
+    } catch (error) {
+      setNotice(error.message || 'Could not save product.');
+    }
+  }
+
+  async function deleteProduct(productId) {
+    try {
+      await deleteProductById(productId);
+      setProducts((currentProducts) => currentProducts.filter((product) => product.id !== productId));
+      setNotice('Product deleted.');
+    } catch (error) {
+      setNotice(error.message || 'Could not delete product.');
+    }
+  }
+
+  async function addProductToCart(productId, quantity = 1) {
+    if (!currentUser) {
+      setNotice('Login before adding products to your cart.');
+      navigate('login');
+      return;
+    }
+
+    setCartBusyProductId(productId);
+
+    try {
+      const nextCart = await addCartItem(productId, quantity);
+      setCart(nextCart);
+      setNotice('Product added to cart.');
+    } catch (error) {
+      setNotice(error.message || 'Could not add product to cart.');
+    } finally {
+      setCartBusyProductId(null);
+    }
+  }
+
+  async function updateCartQuantity(productId, quantity) {
+    if (!Number.isFinite(quantity) || quantity < 1) {
+      return;
+    }
+
+    setCartBusyProductId(productId);
+
+    try {
+      const nextCart = await updateCartItem(productId, quantity);
+      setCart(nextCart);
+    } catch (error) {
+      setNotice(error.message || 'Could not update cart item.');
+    } finally {
+      setCartBusyProductId(null);
+    }
+  }
+
+  async function removeProductFromCart(productId) {
+    setCartBusyProductId(productId);
+
+    try {
+      const nextCart = await removeCartItem(productId);
+      setCart(nextCart);
+      setNotice('Product removed from cart.');
+    } catch (error) {
+      setNotice(error.message || 'Could not remove cart item.');
+    } finally {
+      setCartBusyProductId(null);
+    }
+  }
+
+  async function clearCurrentCart() {
+    try {
+      await clearCart();
+      setCart({ items: [], totalQuantity: 0, totalAmount: 0 });
+      setNotice('Cart cleared.');
+    } catch (error) {
+      setNotice(error.message || 'Could not clear cart.');
+    }
   }
 
   function navigate(page) {
@@ -411,6 +650,7 @@ function App() {
         authChecked={authChecked}
         currentUser={currentUser}
         isAdmin={isAdmin}
+        cartCount={cart.totalQuantity}
         onNavigate={navigate}
         onLogout={handleLogout}
       />
@@ -426,6 +666,50 @@ function App() {
 
       <main>
         {activePage === 'home' && <Home currentUser={currentUser} isAdmin={isAdmin} onNavigate={navigate} />}
+        {activePage === 'products' && (
+          <ProductCatalog
+            filters={productFilters}
+            onFiltersChange={updateProductFilters}
+            onPageChange={(number) => setProductPage((current) => ({ ...current, number }))}
+            onView={viewProduct}
+            onAddToCart={addProductToCart}
+            page={productPage}
+            products={products}
+            selectedProduct={selectedProduct}
+            onCloseDetails={() => setSelectedProduct(null)}
+            cartBusyProductId={cartBusyProductId}
+            currentUser={currentUser}
+          />
+        )}
+        {activePage === 'cart' && (
+          <CartPage
+            busyProductId={cartBusyProductId}
+            cart={cart}
+            currentUser={currentUser}
+            onClear={clearCurrentCart}
+            onNavigate={navigate}
+            onRemove={removeProductFromCart}
+            onUpdateQuantity={updateCartQuantity}
+          />
+        )}
+        {activePage === 'adminProducts' && (
+          <ProductManagement
+            editingProductId={editingProductId}
+            form={productForm}
+            isAdmin={isAdmin}
+            onCancel={() => {
+              setEditingProductId(null);
+              setProductForm(emptyProductForm);
+            }}
+            onChange={setProductForm}
+            onCreate={startProductCreate}
+            onDelete={deleteProduct}
+            onNavigate={navigate}
+            onSave={saveProduct}
+            onStartEdit={startProductEdit}
+            products={products}
+          />
+        )}
         {activePage === 'login' && (
           <Login form={loginForm} onChange={setLoginForm} onNavigate={navigate} onSubmit={handleLogin} />
         )}
@@ -479,7 +763,7 @@ function App() {
   );
 }
 
-function Navbar({ activePage, authChecked, currentUser, isAdmin, onNavigate, onLogout }) {
+function Navbar({ activePage, authChecked, cartCount, currentUser, isAdmin, onNavigate, onLogout }) {
   return (
     <header className="navbar">
       <button className="brand" type="button" onClick={() => onNavigate('home')}>
@@ -490,10 +774,23 @@ function Navbar({ activePage, authChecked, currentUser, isAdmin, onNavigate, onL
         <button className={activePage === 'home' ? 'active' : ''} type="button" onClick={() => onNavigate('home')}>
           Home
         </button>
-        {isAdmin && (
-          <button className={activePage === 'users' ? 'active' : ''} type="button" onClick={() => onNavigate('users')}>
-            Users
+        <button className={activePage === 'products' ? 'active' : ''} type="button" onClick={() => onNavigate('products')}>
+          Products
+        </button>
+        {currentUser && (
+          <button className={activePage === 'cart' ? 'active' : ''} type="button" onClick={() => onNavigate('cart')}>
+            Cart {cartCount ? `(${cartCount})` : ''}
           </button>
+        )}
+        {isAdmin && (
+          <>
+            <button className={activePage === 'adminProducts' ? 'active' : ''} type="button" onClick={() => onNavigate('adminProducts')}>
+              Manage Products
+            </button>
+            <button className={activePage === 'users' ? 'active' : ''} type="button" onClick={() => onNavigate('users')}>
+              Users
+            </button>
+          </>
         )}
       </nav>
 
@@ -599,10 +896,12 @@ function Home({ currentUser, isAdmin, onNavigate }) {
           and admin user operations before the entire backend is finished.
         </p>
         <div className="hero-actions">
-          <button className="primary" type="button" onClick={() => onNavigate(currentUser ? (isAdmin ? 'users' : 'profile') : 'login')}>
-            {currentUser ? 'Open account' : 'Start with login'}
+          <button className="primary" type="button" onClick={() => onNavigate('products')}>
+            Browse products
           </button>
-          <button type="button" onClick={() => onNavigate('register')}>Create account</button>
+          <button type="button" onClick={() => onNavigate(currentUser ? (isAdmin ? 'adminProducts' : 'profile') : 'login')}>
+            {currentUser ? (isAdmin ? 'Manage catalog' : 'Open account') : 'Start with login'}
+          </button>
         </div>
       </div>
 
@@ -612,6 +911,7 @@ function Home({ currentUser, isAdmin, onNavigate }) {
           <li>Register always sends role USER.</li>
           <li>Login stores the access token returned by the backend.</li>
           <li>Protected requests send Authorization: Bearer token.</li>
+          <li>Product browsing stays public while catalog changes stay admin-only.</li>
           <li>The current role comes from the server-side /me endpoint.</li>
           <li>Spring Security remains the real authorization layer.</li>
         </ul>
@@ -860,6 +1160,413 @@ function Register({
   );
 }
 
+function ProductCatalog({
+  cartBusyProductId,
+  currentUser,
+  filters,
+  onCloseDetails,
+  onAddToCart,
+  onFiltersChange,
+  onPageChange,
+  onView,
+  page,
+  products,
+  selectedProduct,
+}) {
+  return (
+    <section className="products-page">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Storefront</p>
+          <h1>Products</h1>
+        </div>
+        <span>{page.totalElements} items</span>
+      </div>
+
+      <div className="product-toolbar">
+        <label>
+          Search
+          <input
+            value={filters.search}
+            onChange={(event) => onFiltersChange({ ...filters, search: event.target.value, category: '' })}
+            placeholder="Search by product name"
+          />
+        </label>
+        <label>
+          Category
+          <input
+            value={filters.category}
+            onChange={(event) => onFiltersChange({ ...filters, category: event.target.value, search: '' })}
+            placeholder="Filter category"
+          />
+        </label>
+      </div>
+
+      {products.length === 0 ? (
+        <div className="empty-state">
+          <h2>No products found</h2>
+          <p>Try another search or add products from the admin catalog.</p>
+        </div>
+      ) : (
+        <div className="product-grid">
+          {products.map((product) => (
+            <article className="product-card" key={product.id}>
+              <div className="product-image">
+                {product.imageUrl ? (
+                  <img src={product.imageUrl} alt={product.name} />
+                ) : (
+                  <span>{product.name.charAt(0).toUpperCase()}</span>
+                )}
+              </div>
+              <div className="product-card-body">
+                <div>
+                  <p className="product-category">{product.category || 'General'}</p>
+                  <h2>{product.name}</h2>
+                  <p className="product-description-preview">{product.description || 'No description available.'}</p>
+                </div>
+                <div className="product-card-footer">
+                  <strong>{formatCurrency(product.price)}</strong>
+                  <div className="row-actions">
+                    <button type="button" onClick={() => onView(product.id)}>View</button>
+                    <button
+                      className="primary"
+                      disabled={cartBusyProductId === product.id || product.quantity < 1}
+                      type="button"
+                      onClick={() => onAddToCart(product.id)}
+                    >
+                      {cartBusyProductId === product.id ? 'Adding...' : product.quantity < 1 ? 'Out' : 'Add'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+
+      <div className="pagination">
+        <button disabled={page.number <= 0} type="button" onClick={() => onPageChange(page.number - 1)}>
+          Previous
+        </button>
+        <span>Page {page.number + 1} of {Math.max(page.totalPages, 1)}</span>
+        <button
+          disabled={page.number + 1 >= page.totalPages}
+          type="button"
+          onClick={() => onPageChange(page.number + 1)}
+        >
+          Next
+        </button>
+      </div>
+
+      {selectedProduct && (
+        <ProductDetails
+          busy={cartBusyProductId === selectedProduct.id}
+          currentUser={currentUser}
+          onAddToCart={onAddToCart}
+          product={selectedProduct}
+          onClose={onCloseDetails}
+        />
+      )}
+    </section>
+  );
+}
+
+function ProductDetails({ busy, currentUser, onAddToCart, product, onClose }) {
+  return (
+    <div className="modal-backdrop" role="presentation" onClick={onClose}>
+      <section className="product-detail" role="dialog" aria-modal="true" aria-labelledby="product-title" onClick={(event) => event.stopPropagation()}>
+        <button className="modal-close" type="button" onClick={onClose} aria-label="Close product details">
+          x
+        </button>
+        <div className="product-detail-media">
+          {product.imageUrl ? (
+            <img src={product.imageUrl} alt={product.name} />
+          ) : (
+            <span>{product.name.charAt(0).toUpperCase()}</span>
+          )}
+        </div>
+        <div>
+          <p className="product-category">{product.category || 'General'}</p>
+          <h1 id="product-title">{product.name}</h1>
+          <p className="lead product-description-full">{product.description || 'No description available.'}</p>
+          <dl className="product-facts">
+            <div>
+              <dt>Price</dt>
+              <dd>{formatCurrency(product.price)}</dd>
+            </div>
+            <div>
+              <dt>Available</dt>
+              <dd>{product.quantity}</dd>
+            </div>
+            <div>
+              <dt>SKU</dt>
+              <dd>{product.sku}</dd>
+            </div>
+          </dl>
+          <div className="form-actions">
+            <button
+              className="primary"
+              disabled={busy || product.quantity < 1}
+              type="button"
+              onClick={() => onAddToCart(product.id)}
+            >
+              {busy ? 'Adding...' : product.quantity < 1 ? 'Out of stock' : currentUser ? 'Add to cart' : 'Login to add'}
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function CartPage({
+  busyProductId,
+  cart,
+  currentUser,
+  onClear,
+  onNavigate,
+  onRemove,
+  onUpdateQuantity,
+}) {
+  if (!currentUser) {
+    return (
+      <section className="locked-page">
+        <h1>Login required</h1>
+        <p>Sign in to view and update your shopping cart.</p>
+        <button className="primary" type="button" onClick={() => onNavigate('login')}>Login</button>
+      </section>
+    );
+  }
+
+  return (
+    <section className="cart-page">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Your cart</p>
+          <h1>Shopping cart</h1>
+        </div>
+        <span>{cart.totalQuantity} items</span>
+      </div>
+
+      {cart.items.length === 0 ? (
+        <div className="empty-state">
+          <h2>Your cart is empty</h2>
+          <p>Add products from the storefront and they will appear here.</p>
+          <button className="primary" type="button" onClick={() => onNavigate('products')}>Browse products</button>
+        </div>
+      ) : (
+        <div className="cart-layout">
+          <div className="cart-items">
+            {cart.items.map((item) => (
+              <article className="cart-item" key={item.id || item.productId}>
+                <div className="cart-item-image">
+                  {item.imageUrl ? (
+                    <img src={item.imageUrl} alt={item.productName} />
+                  ) : (
+                    <span>{item.productName.charAt(0).toUpperCase()}</span>
+                  )}
+                </div>
+                <div className="cart-item-main">
+                  <div>
+                    <h2>{item.productName}</h2>
+                    <p>{item.sku}</p>
+                  </div>
+                  <strong>{formatCurrency(item.unitPrice)}</strong>
+                </div>
+                <div className="quantity-stepper" aria-label={`Quantity for ${item.productName}`}>
+                  <button
+                    disabled={busyProductId === item.productId || item.quantity <= 1}
+                    type="button"
+                    onClick={() => onUpdateQuantity(item.productId, item.quantity - 1)}
+                  >
+                    -
+                  </button>
+                  <input
+                    min="1"
+                    type="number"
+                    value={item.quantity}
+                    onChange={(event) => onUpdateQuantity(item.productId, Number(event.target.value))}
+                  />
+                  <button
+                    disabled={busyProductId === item.productId}
+                    type="button"
+                    onClick={() => onUpdateQuantity(item.productId, item.quantity + 1)}
+                  >
+                    +
+                  </button>
+                </div>
+                <div className="cart-line-actions">
+                  <strong>{formatCurrency(item.lineTotal)}</strong>
+                  <button
+                    className="danger"
+                    disabled={busyProductId === item.productId}
+                    type="button"
+                    onClick={() => onRemove(item.productId)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <aside className="cart-summary">
+            <h2>Summary</h2>
+            <dl>
+              <div>
+                <dt>Items</dt>
+                <dd>{cart.totalQuantity}</dd>
+              </div>
+              <div>
+                <dt>Total</dt>
+                <dd>{formatCurrency(cart.totalAmount)}</dd>
+              </div>
+            </dl>
+            <button className="primary" type="button" onClick={() => onNavigate('products')}>Continue shopping</button>
+            <button className="danger" type="button" onClick={onClear}>Clear cart</button>
+          </aside>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ProductManagement({
+  editingProductId,
+  form,
+  isAdmin,
+  onCancel,
+  onChange,
+  onCreate,
+  onDelete,
+  onNavigate,
+  onSave,
+  onStartEdit,
+  products,
+}) {
+  if (!isAdmin) {
+    return (
+      <section className="locked-page">
+        <h1>Admin access required</h1>
+        <p>Product changes require an ADMIN token. Product browsing is available from the storefront.</p>
+        <button className="primary" type="button" onClick={() => onNavigate('login')}>Login as admin</button>
+      </section>
+    );
+  }
+
+  return (
+    <section className="products-admin-page">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Admin</p>
+          <h1>Product catalog</h1>
+        </div>
+        <button className="primary" type="button" onClick={onCreate}>Add product</button>
+      </div>
+
+      {editingProductId && (
+        <ProductEditor
+          form={form}
+          isNew={editingProductId === 'new'}
+          onCancel={onCancel}
+          onChange={onChange}
+          onSave={onSave}
+        />
+      )}
+
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>SKU</th>
+              <th>Price</th>
+              <th>Stock</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {products.map((product) => (
+              <tr key={product.id}>
+                <td>
+                  <strong>{product.name}</strong>
+                  <span className="table-subtext">{product.category || 'General'}</span>
+                </td>
+                <td>{product.sku}</td>
+                <td>{formatCurrency(product.price)}</td>
+                <td>{product.quantity}</td>
+                <td><span className="role-pill">{product.active ? 'ACTIVE' : 'INACTIVE'}</span></td>
+                <td>
+                  <div className="row-actions">
+                    <button type="button" onClick={() => onStartEdit(product)}>Edit</button>
+                    <button className="danger" type="button" onClick={() => onDelete(product.id)}>Delete</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function ProductEditor({ form, isNew, onCancel, onChange, onSave }) {
+  return (
+    <form className="product-editor" onSubmit={onSave}>
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">{isNew ? 'New item' : 'Editing'}</p>
+          <h2>{isNew ? 'Add product' : form.name}</h2>
+        </div>
+      </div>
+      <div className="form-grid">
+        <label>
+          Name
+          <input required value={form.name} onChange={(event) => onChange({ ...form, name: event.target.value })} />
+        </label>
+        <label>
+          SKU
+          <input required value={form.sku} onChange={(event) => onChange({ ...form, sku: event.target.value })} />
+        </label>
+        <label>
+          Price
+          <input required min="0" step="0.01" type="number" value={form.price} onChange={(event) => onChange({ ...form, price: event.target.value })} />
+        </label>
+        <label>
+          Quantity
+          <input required min="0" step="1" type="number" value={form.quantity} onChange={(event) => onChange({ ...form, quantity: event.target.value })} />
+        </label>
+        <label>
+          Category
+          <input value={form.category} onChange={(event) => onChange({ ...form, category: event.target.value })} />
+        </label>
+        <label>
+          Image URL
+          <input type="url" value={form.imageUrl} onChange={(event) => onChange({ ...form, imageUrl: event.target.value })} />
+        </label>
+        <label className="wide-field">
+          Description
+          <textarea value={form.description} onChange={(event) => onChange({ ...form, description: event.target.value })} />
+        </label>
+        <label className="checkbox-field">
+          <input
+            checked={form.active}
+            type="checkbox"
+            onChange={(event) => onChange({ ...form, active: event.target.checked })}
+          />
+          Active product
+        </label>
+      </div>
+      <div className="form-actions">
+        <button className="primary" type="submit">{isNew ? 'Create product' : 'Save product'}</button>
+        <button type="button" onClick={onCancel}>Cancel</button>
+      </div>
+    </form>
+  );
+}
+
 function UserManagement({
   draftUser,
   editingUserId,
@@ -966,6 +1673,13 @@ function UserManagement({
       </div>
     </section>
   );
+}
+
+function formatCurrency(value) {
+  return new Intl.NumberFormat('en-IN', {
+    currency: 'INR',
+    style: 'currency',
+  }).format(Number(value || 0));
 }
 
 function isValidEmail(email) {
