@@ -1,0 +1,1255 @@
+{
+  "info": {
+    "_postman_id": "7f8ecf18-d01e-4fd1-a60e-e4b0f75bce01",
+    "name": "Ecom Microservices API",
+    "description": "Current API collection for the React + Spring Boot ecommerce microservices: user, product, cart, order, and payment. Defaults to the frontend proxy at http://localhost:3000/api. Switch request URLs to direct service variables when testing services without the React dev proxy.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": []
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": []
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "01 Auth Service",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Deepak Raj\",\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\",\n  \"role\": \"ADMIN\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/auth/register",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Public registration endpoint. Role defaults to USER if omitted."
+          },
+          "response": []
+        },
+        {
+          "name": "Register User - Legacy Users Path",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo User\",\n  \"email\": \"demo.user@test.com\",\n  \"password\": \"password123\",\n  \"role\": \"USER\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/users/register",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "users",
+                "register"
+              ]
+            },
+            "description": "Public registration endpoint exposed under /api/users/register."
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (data.token) {",
+                  "  pm.collectionVariables.set('token', data.token);",
+                  "}",
+                  "if (data.id) {",
+                  "  pm.collectionVariables.set('userId', data.id);",
+                  "}",
+                  "if (data.email) {",
+                  "  pm.collectionVariables.set('userEmail', data.email);",
+                  "}",
+                  "if (data.role) {",
+                  "  pm.collectionVariables.set('role', data.role);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/auth/login",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Returns token, id, name, email, and role. The test script stores token/user variables."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base}}/auth/me",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Send Email OTP",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "text/plain"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{userEmail}}"
+            },
+            "url": {
+              "raw": "{{api_base}}/auth/validateEmail",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "auth",
+                "validateEmail"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify OTP",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"otp\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/auth/verifyOtp",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "auth",
+                "verifyOtp"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Password Reset",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"otp\": \"123456\",\n  \"password\": \"{{userPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/auth/password-reset",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "auth",
+                "password-reset"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02 User Service",
+      "item": [
+        {
+          "name": "Get All Users - Admin",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base}}/users",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "users"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get User By ID - Admin",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base}}/users/{{userId}}",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update User By ID - Admin",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Deepak Raj Updated\",\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\",\n  \"role\": \"ADMIN\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/users/{{userId}}",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Current User By Email",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Deepak Raj\",\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\",\n  \"role\": \"ADMIN\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/users/updateByEmail",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "users",
+                "updateByEmail"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete User - Admin",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{api_base}}/users/{{userId}}",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03 Product Service",
+      "item": [
+        {
+          "name": "List Active Products",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base}}/products?page=0&size=12",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "12"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Product By ID",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base}}/products/{{productId}}",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "products",
+                "{{productId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Product By SKU",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base}}/products/sku/{{productSku}}",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "products",
+                "sku",
+                "{{productSku}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Products By Category",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base}}/products/category/{{category}}?page=0&size=12",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "products",
+                "category",
+                "{{category}}"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "12"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Search Products",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base}}/products/search?name={{searchTerm}}&page=0&size=12",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "products",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "{{searchTerm}}"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "12"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Product - Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (data.id) { pm.collectionVariables.set('productId', data.id); }",
+                  "if (data.sku) { pm.collectionVariables.set('productSku', data.sku); }",
+                  "if (data.category) { pm.collectionVariables.set('category', data.category); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"MacBook Pro 14\",\n  \"description\": \"Apple M3 Pro laptop with 18GB memory and 512GB storage.\",\n  \"sku\": \"MBP-14-M3-001\",\n  \"price\": 140000.00,\n  \"quantity\": 10,\n  \"category\": \"Laptops\",\n  \"imageUrl\": \"https://example.com/macbook.jpg\",\n  \"active\": true\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/products",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "products"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Product - Admin",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"MacBook Pro 14 Updated\",\n  \"description\": \"Updated product description.\",\n  \"sku\": \"{{productSku}}\",\n  \"price\": 139000.00,\n  \"quantity\": 8,\n  \"category\": \"{{category}}\",\n  \"imageUrl\": \"https://example.com/macbook-updated.jpg\",\n  \"active\": true\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/products/{{productId}}",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "products",
+                "{{productId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Soft Delete Product - Admin",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{api_base}}/products/{{productId}}",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "products",
+                "{{productId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04 Cart Service",
+      "item": [
+        {
+          "name": "Get My Cart",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base}}/cart",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "cart"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Item To Cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": {{productId}},\n  \"quantity\": 1\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/cart/items",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "cart",
+                "items"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Cart Item Quantity",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 2\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/cart/items/{{productId}}",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "cart",
+                "items",
+                "{{productId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Cart Item",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{api_base}}/cart/items/{{productId}}",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "cart",
+                "items",
+                "{{productId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Clear My Cart",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{api_base}}/cart",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "cart"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Cart By User ID - Admin",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base}}/cart/admin/users/{{userId}}",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "cart",
+                "admin",
+                "users",
+                "{{userId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "05 Order Service",
+      "item": [
+        {
+          "name": "Create Order From Cart",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (data.id) { pm.collectionVariables.set('orderId', data.id); }",
+                  "if (data.orderNumber) { pm.collectionVariables.set('orderNumber', data.orderNumber); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shippingAddress\": \"Chennai, Tamil Nadu\",\n  \"contactPhone\": \"9876543210\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/orders",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "Creates an order from the current user's cart, clears the cart, and publishes order.created when Kafka is enabled."
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base}}/orders",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Order By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base}}/orders/{{orderId}}",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel My Order",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{api_base}}/orders/{{orderId}}/cancel",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId}}",
+                "cancel"
+              ]
+            },
+            "description": "Cancels an order. If already paid, order moves to CANCELLED + REFUND_IN_PROGRESS and publishes refund.requested."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Orders - Admin",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base}}/orders/admin",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "orders",
+                "admin"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Order By ID - Admin",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base}}/orders/admin/{{orderId}}",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "orders",
+                "admin",
+                "{{orderId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Order Status - Admin",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"SHIPPED\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/orders/admin/{{orderId}}/status",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "orders",
+                "admin",
+                "{{orderId}}",
+                "status"
+              ]
+            },
+            "description": "Allowed status values: PENDING_PAYMENT, CONFIRMED, CANCELLED, PAYMENT_FAILED, SHIPPED, DELIVERED."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Payment Status - Admin Manual",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderNumber\": \"{{orderNumber}}\",\n  \"paymentStatus\": \"PAID\",\n  \"paymentReference\": \"PAY-MANUAL-001\"\n}"
+            },
+            "url": {
+              "raw": "{{api_base}}/orders/admin/payment-status",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "orders",
+                "admin",
+                "payment-status"
+              ]
+            },
+            "description": "Manual order payment status update. Payment values: PENDING, PROCESSING, PAID, FAILED, REFUND_IN_PROGRESS, REFUNDED."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "06 Payment Service",
+      "item": [
+        {
+          "name": "Get My Payments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base}}/payments",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "payments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Payment By Order Number",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base}}/payments/orders/{{orderNumber}}",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "payments",
+                "orders",
+                "{{orderNumber}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Payments - Admin",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base}}/payments/admin",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "payments",
+                "admin"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Payment By Order Number - Admin",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{api_base}}/payments/admin/orders/{{orderNumber}}",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "payments",
+                "admin",
+                "orders",
+                "{{orderNumber}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Process Payment - Admin Simulation",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{api_base}}/payments/admin/orders/{{orderNumber}}/process",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "payments",
+                "admin",
+                "orders",
+                "{{orderNumber}}",
+                "process"
+              ]
+            },
+            "description": "Starts the simulated payment flow for a payment record. Kafka order.created normally starts this automatically."
+          },
+          "response": []
+        },
+        {
+          "name": "Refund Payment - Admin Simulation",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{api_base}}/payments/admin/orders/{{orderNumber}}/refund",
+              "host": [
+                "{{api_base}}"
+              ],
+              "path": [
+                "payments",
+                "admin",
+                "orders",
+                "{{orderNumber}}",
+                "refund"
+              ]
+            },
+            "description": "Starts the simulated refund flow for an already paid order."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Direct Service URL Smoke Tests",
+      "item": [
+        {
+          "name": "User - Auth Me Direct",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{user_service_url}}/api/auth/me",
+              "host": [
+                "{{user_service_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Product - List Direct",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{product_service_url}}/api/products?page=0&size=12",
+              "host": [
+                "{{product_service_url}}"
+              ],
+              "path": [
+                "api",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "12"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cart - Get Direct",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{cart_service_url}}/api/cart",
+              "host": [
+                "{{cart_service_url}}"
+              ],
+              "path": [
+                "api",
+                "cart"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Order - Get Direct",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{order_service_url}}/api/orders",
+              "host": [
+                "{{order_service_url}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Payment - Get Direct",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{payment_service_url}}/api/payments",
+              "host": [
+                "{{payment_service_url}}"
+              ],
+              "path": [
+                "api",
+                "payments"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "api_base",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    },
+    {
+      "key": "user_service_url",
+      "value": "http://localhost:8081",
+      "type": "string"
+    },
+    {
+      "key": "product_service_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "cart_service_url",
+      "value": "http://localhost:8082",
+      "type": "string"
+    },
+    {
+      "key": "order_service_url",
+      "value": "http://localhost:8083",
+      "type": "string"
+    },
+    {
+      "key": "payment_service_url",
+      "value": "http://localhost:8084",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userEmail",
+      "value": "deepakraj.s@lightcast.io",
+      "type": "string"
+    },
+    {
+      "key": "userPassword",
+      "value": "123456",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "role",
+      "value": "ADMIN",
+      "type": "string"
+    },
+    {
+      "key": "productId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "productSku",
+      "value": "MBP-14-M3-001",
+      "type": "string"
+    },
+    {
+      "key": "category",
+      "value": "Laptops",
+      "type": "string"
+    },
+    {
+      "key": "searchTerm",
+      "value": "MacBook",
+      "type": "string"
+    },
+    {
+      "key": "orderId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "orderNumber",
+      "value": "ORD-CHANGE-ME",
+      "type": "string"
+    }
+  ]
+}
