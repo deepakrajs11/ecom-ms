@@ -25,6 +25,7 @@ hs_err_pid*
 # ===============================
 .env
 .env.*
+!.env.example
 
 # 👉 Better approach:
 # Keep a template instead
