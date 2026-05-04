@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: ecom
+data:
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: "5432"
+  USER_SERVICE_URL: http://user:8081
+  PRODUCT_SERVICE_URL: http://product:8080
+  CART_SERVICE_URL: http://cart:8082
+  KAFKA_ENABLED: "true"
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  ORDER_CREATED_TOPIC: order.created
+  REFUND_REQUESTED_TOPIC: refund.requested
+  PAYMENT_UPDATED_TOPIC: payment.updated
+  PAYMENT_SIMULATION_DELAY_MS: "5000"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init
+  namespace: ecom
+data:
+  init-multiple-databases.sql: |
+    CREATE DATABASE userdb;
+    CREATE DATABASE productdb;
+    CREATE DATABASE cartdb;
+    CREATE DATABASE orderdb;
+    CREATE DATABASE paymentdb;

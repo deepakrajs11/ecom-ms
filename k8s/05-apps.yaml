@@ -1,0 +1,383 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user
+  namespace: ecom
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user
+  template:
+    metadata:
+      labels:
+        app: user
+    spec:
+      containers:
+        - name: user
+          image: YOUR_DOCKERHUB_USERNAME/ecom-user:1.0.0
+          ports:
+            - containerPort: 8081
+          env:
+            - name: DB_URL
+              value: jdbc:postgresql://postgres:5432/userdb
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: JWT_SECRET
+            - name: MAIL_ID
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: MAIL_ID
+            - name: MAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: MAIL_PASSWORD
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user
+  namespace: ecom
+spec:
+  selector:
+    app: user
+  ports:
+    - port: 8081
+      targetPort: 8081
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product
+  namespace: ecom
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: product
+  template:
+    metadata:
+      labels:
+        app: product
+    spec:
+      containers:
+        - name: product
+          image: YOUR_DOCKERHUB_USERNAME/ecom-product:1.0.0
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DB_URL
+              value: jdbc:postgresql://postgres:5432/productdb
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: JWT_SECRET
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: product
+  namespace: ecom
+spec:
+  selector:
+    app: product
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cart
+  namespace: ecom
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cart
+  template:
+    metadata:
+      labels:
+        app: cart
+    spec:
+      containers:
+        - name: cart
+          image: YOUR_DOCKERHUB_USERNAME/ecom-cart:1.0.0
+          ports:
+            - containerPort: 8082
+          env:
+            - name: SERVER_PORT
+              value: "8082"
+            - name: DB_URL
+              value: jdbc:postgresql://postgres:5432/cartdb
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: JWT_SECRET
+            - name: USER_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: USER_SERVICE_URL
+            - name: PRODUCT_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: PRODUCT_SERVICE_URL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cart
+  namespace: ecom
+spec:
+  selector:
+    app: cart
+  ports:
+    - port: 8082
+      targetPort: 8082
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order
+  namespace: ecom
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order
+  template:
+    metadata:
+      labels:
+        app: order
+    spec:
+      containers:
+        - name: order
+          image: YOUR_DOCKERHUB_USERNAME/ecom-order:1.0.0
+          ports:
+            - containerPort: 8083
+          env:
+            - name: SERVER_PORT
+              value: "8083"
+            - name: DB_URL
+              value: jdbc:postgresql://postgres:5432/orderdb
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: JWT_SECRET
+            - name: USER_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: USER_SERVICE_URL
+            - name: PRODUCT_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: PRODUCT_SERVICE_URL
+            - name: CART_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: CART_SERVICE_URL
+            - name: KAFKA_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: KAFKA_ENABLED
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: KAFKA_BOOTSTRAP_SERVERS
+            - name: ORDER_CREATED_TOPIC
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: ORDER_CREATED_TOPIC
+            - name: REFUND_REQUESTED_TOPIC
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: REFUND_REQUESTED_TOPIC
+            - name: PAYMENT_UPDATED_TOPIC
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: PAYMENT_UPDATED_TOPIC
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order
+  namespace: ecom
+spec:
+  selector:
+    app: order
+  ports:
+    - port: 8083
+      targetPort: 8083
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment
+  namespace: ecom
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment
+  template:
+    metadata:
+      labels:
+        app: payment
+    spec:
+      containers:
+        - name: payment
+          image: YOUR_DOCKERHUB_USERNAME/ecom-payment:1.0.0
+          ports:
+            - containerPort: 8084
+          env:
+            - name: SERVER_PORT
+              value: "8084"
+            - name: DB_URL
+              value: jdbc:postgresql://postgres:5432/paymentdb
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: JWT_SECRET
+            - name: KAFKA_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: KAFKA_ENABLED
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: KAFKA_BOOTSTRAP_SERVERS
+            - name: ORDER_CREATED_TOPIC
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: ORDER_CREATED_TOPIC
+            - name: REFUND_REQUESTED_TOPIC
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: REFUND_REQUESTED_TOPIC
+            - name: PAYMENT_UPDATED_TOPIC
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: PAYMENT_UPDATED_TOPIC
+            - name: PAYMENT_SIMULATION_DELAY_MS
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: PAYMENT_SIMULATION_DELAY_MS
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment
+  namespace: ecom
+spec:
+  selector:
+    app: payment
+  ports:
+    - port: 8084
+      targetPort: 8084
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: ecom
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: YOUR_DOCKERHUB_USERNAME/ecom-frontend:1.0.0
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: ecom
+spec:
+  selector:
+    app: frontend
+  ports:
+    - port: 80
+      targetPort: 80
