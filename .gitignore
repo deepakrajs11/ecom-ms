@@ -26,6 +26,7 @@ hs_err_pid*
 .env
 .env.*
 !.env.example
+k8s/02-secrets.yaml
 
 # 👉 Better approach:
 # Keep a template instead

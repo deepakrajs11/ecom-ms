@@ -18,7 +18,21 @@ image: your-dockerhub-user/ecom-order:1.0.0
 
 ## 2. Create the Secret
 
-Copy the example and edit real values:
+Secrets are stored in a Kubernetes `Secret`, not in the app `ConfigMap`. The committed file is only a template.
+
+Option A: create the secret directly from your shell:
+
+```bash
+kubectl create secret generic app-secrets \
+  -n ecom \
+  --from-literal=POSTGRES_USER='ecom' \
+  --from-literal=POSTGRES_PASSWORD='replace-with-a-strong-password' \
+  --from-literal=JWT_SECRET='replace-with-a-long-random-secret-at-least-32-chars' \
+  --from-literal=MAIL_ID='' \
+  --from-literal=MAIL_PASSWORD=''
+```
+
+Option B: copy the example and edit real values:
 
 ```bash
 cp k8s/02-secrets.example.yaml k8s/02-secrets.yaml
@@ -31,7 +45,7 @@ Update:
 - `MAIL_ID`
 - `MAIL_PASSWORD`
 
-Never commit `k8s/02-secrets.yaml`.
+Never commit `k8s/02-secrets.yaml`; it is ignored by git.
 
 ## 3. Install ingress-nginx
 

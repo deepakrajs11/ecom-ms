@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: user
-          image: YOUR_DOCKERHUB_USERNAME/ecom-user:1.0.0
+          image: deepakraj11/ecom-user:1.0.0
           ports:
             - containerPort: 8081
           env:
@@ -76,7 +76,7 @@ spec:
     spec:
       containers:
         - name: product
-          image: YOUR_DOCKERHUB_USERNAME/ecom-product:1.0.0
+          image: deepakraj11/ecom-product:1.0.0
           ports:
             - containerPort: 8080
           env:
@@ -127,7 +127,7 @@ spec:
     spec:
       containers:
         - name: cart
-          image: YOUR_DOCKERHUB_USERNAME/ecom-cart:1.0.0
+          image: deepakraj11/ecom-cart:1.0.0
           ports:
             - containerPort: 8082
           env:
@@ -190,7 +190,7 @@ spec:
     spec:
       containers:
         - name: order
-          image: YOUR_DOCKERHUB_USERNAME/ecom-order:1.0.0
+          image: deepakraj11/ecom-order:1.0.0
           ports:
             - containerPort: 8083
           env:
@@ -283,7 +283,7 @@ spec:
     spec:
       containers:
         - name: payment
-          image: YOUR_DOCKERHUB_USERNAME/ecom-payment:1.0.0
+          image: deepakraj11/ecom-payment:1.0.0
           ports:
             - containerPort: 8084
           env:
@@ -366,7 +366,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: YOUR_DOCKERHUB_USERNAME/ecom-frontend:1.0.0
+          image: deepakraj11/ecom-frontend:1.0.0
           ports:
             - containerPort: 80
 ---
