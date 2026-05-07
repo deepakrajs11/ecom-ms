@@ -1,0 +1,46 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - 00-namespace.yaml
+  - 01-configmaps.yaml
+  - 03-postgres.yaml
+  - 04-kafka.yaml
+  - 05-apps.yaml
+  - 06-ingress.yaml
+
+images:
+  - name: deepakraj11/ecom-user
+    newName: ecom-user
+    newTag: local
+  - name: deepakraj11/ecom-product
+    newName: ecom-product
+    newTag: local
+  - name: deepakraj11/ecom-cart
+    newName: ecom-cart
+    newTag: local
+  - name: deepakraj11/ecom-order
+    newName: ecom-order
+    newTag: local
+  - name: deepakraj11/ecom-payment
+    newName: ecom-payment
+    newTag: local
+  - name: deepakraj11/ecom-frontend
+    newName: ecom-frontend
+    newTag: local
+
+patches:
+  - target:
+      kind: PersistentVolumeClaim
+      name: postgres-data
+    patch: |-
+      - op: replace
+        path: /spec/storageClassName
+        value: standard
+  - target:
+      kind: PersistentVolumeClaim
+      name: kafka-data
+    patch: |-
+      - op: replace
+        path: /spec/storageClassName
+        value: standard
